@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CartFamily — McGlinn Shopping Lists</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #F9F5EE;
+    --warm-white: #FDF9F3;
+    --ink: #1A1208;
+    --ink-light: #4A3F2F;
+    --ink-faint: #8B7D6B;
+    --accent: #C8522A;
+    --accent-light: #E8845E;
+    --accent-pale: #F5E6DF;
+    --green: #3A6B4A;
+    --green-pale: #DFF0E5;
+    --border: #DDD5C8;
+    --shadow: rgba(26,18,8,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+
+  /* HEADER */
+  header {
+    background: var(--ink);
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+  }
+  .logo { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; color: var(--cream); }
+  .logo span { color: var(--accent-light); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .sync-status {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px; padding: 6px 14px;
+    color: rgba(255,255,255,0.75); font-size: 13px;
+  }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .sync-dot.syncing { background: #E8A040; animation: pulse 1s infinite; }
+  .sync-dot.error { background: #C55; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .hdr-btn {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 7px 15px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: background .2s;
+  }
+  .hdr-btn:hover { background: var(--accent-light); }
+  .hdr-btn.green { background: var(--green); }
+  .hdr-btn.green:hover { background: #4D8A60; }
+
+  /* LAYOUT */
+  .app-container { display: flex; height: calc(100vh - 57px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 210px; background: var(--warm-white);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto;
+  }
+  .sidebar-header {
+    padding: 18px 16px 10px;
+    font-size: 10px; font-weight: 700; color: var(--ink-faint);
+    text-transform: uppercase; letter-spacing: 2px;
+  }
+  .store-tab {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 16px; cursor: pointer;
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    transition: all .15s;
+  }
+  .store-tab:hover { background: var(--accent-pale); }
+  .store-tab.active { background: var(--accent-pale); border-left-color: var(--accent); }
+  .store-icon { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  .store-info { flex: 1; min-width: 0; }
+  .store-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .store-count { font-size: 11px; color: var(--ink-faint); margin-top: 1px; }
+  .add-store-btn {
+    margin: 10px 14px; padding: 9px;
+    background: none; border: 1.5px dashed var(--border); border-radius: 8px;
+    color: var(--ink-faint); font-family: 'DM Sans', sans-serif; font-size: 13px;
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+  }
+  .add-store-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-pale); }
+
+  /* MAIN */
+  .main-content { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+  .store-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 22px; gap: 14px; flex-wrap: wrap;
+  }
+  .store-title-area h1 { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; line-height: 1.1; }
+  .store-subtitle { color: var(--ink-faint); font-size: 13px; margin-top: 3px; }
+  .store-actions { display: flex; gap: 8px; flex-shrink: 0; flex-wrap: wrap; }
+  .btn-secondary {
+    background: none; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 7px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 500; color: var(--ink-light); cursor: pointer; transition: all .2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger {
+    background: none; border: 1.5px solid #ECC; border-radius: 8px;
+    padding: 7px 14px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 500; color: #C55; cursor: pointer; transition: all .2s;
+  }
+  .btn-danger:hover { background: #FEE; border-color: #C55; }
+
+  /* QUICK ADD */
+  .quick-add-bar {
+    display: flex; gap: 8px; margin-bottom: 22px;
+    background: white; border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 9px 12px; box-shadow: 0 2px 8px var(--shadow); align-items: center; flex-wrap: wrap;
+  }
+  .quick-add-bar input[type=text] {
+    border: none; outline: none; font-family: 'DM Sans', sans-serif;
+    font-size: 14px; background: none; color: var(--ink); min-width: 120px;
+  }
+  .quick-add-bar input[type=text]::placeholder { color: var(--ink-faint); }
+  .quick-add-bar select {
+    border: none; outline: none; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; color: var(--ink-light); background: var(--cream);
+    padding: 4px 8px; border-radius: 6px; cursor: pointer;
+  }
+  .qty-field { width: 70px !important; flex-shrink: 0 !important; }
+  .btn-add {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 7px 16px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: background .2s; white-space: nowrap;
+  }
+  .btn-add:hover { background: var(--accent-light); }
+
+  /* PROGRESS */
+  .progress-text { font-size: 12px; color: var(--ink-faint); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-bar-wrap { height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 18px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: linear-gradient(to right, var(--accent), var(--accent-light)); border-radius: 2px; transition: width .4s ease; }
+
+  /* CATEGORIES */
+  .categories-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+  .category-card {
+    background: white; border: 1.5px solid var(--border); border-radius: 14px;
+    overflow: hidden; box-shadow: 0 2px 8px var(--shadow); transition: box-shadow .2s;
+  }
+  .category-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .category-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: var(--cream); border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .cat-left { display: flex; align-items: center; gap: 8px; }
+  .collapse-icon { font-size: 11px; transition: transform .2s; }
+  .collapse-icon.open { transform: rotate(90deg); }
+  .cat-emoji { font-size: 17px; }
+  .cat-name { font-weight: 700; font-size: 14px; font-family: 'Playfair Display', serif; }
+  .cat-count { font-size: 11px; color: var(--ink-faint); background: var(--border); padding: 2px 7px; border-radius: 10px; margin-left: 3px; }
+  .cat-controls { display: flex; gap: 4px; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; color: var(--ink-faint);
+    padding: 3px; border-radius: 4px; font-size: 13px; transition: color .15s;
+  }
+  .icon-btn:hover { color: var(--accent); }
+  .icon-btn.del:hover { color: #C55; }
+
+  .category-items { padding: 6px 0; min-height: 36px; }
+  .category-items.collapsed { display: none; }
+
+  .shopping-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 14px; border-bottom: 1px solid rgba(0,0,0,0.04); transition: background .15s;
+  }
+  .shopping-item:last-child { border-bottom: none; }
+  .shopping-item:hover { background: var(--cream); }
+  .item-check {
+    width: 17px; height: 17px; border: 2px solid var(--border); border-radius: 50%;
+    cursor: pointer; flex-shrink: 0; display: flex; align-items: center;
+    justify-content: center; transition: all .2s; background: white;
+  }
+  .item-check.checked { background: var(--green); border-color: var(--green); }
+  .item-check.checked::after { content: '✓'; font-size: 10px; font-weight: 700; color: white; }
+  .item-text { flex: 1; font-size: 14px; }
+  .item-text.checked { text-decoration: line-through; color: var(--ink-faint); }
+  .item-qty { font-size: 12px; color: var(--ink-faint); background: var(--cream); padding: 2px 7px; border-radius: 6px; font-weight: 500; }
+  .item-by { font-size: 11px; color: var(--ink-faint); font-style: italic; }
+  .item-del { opacity: 0; background: none; border: none; cursor: pointer; color: #CCC; font-size: 13px; padding: 2px 4px; border-radius: 4px; transition: all .15s; }
+  .shopping-item:hover .item-del { opacity: 1; }
+  .item-del:hover { color: #C55; }
+
+  .checked-divider { padding: 5px 14px; font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; background: rgba(0,0,0,0.02); }
+
+  .cat-inline-add { display: flex; gap: 5px; padding: 7px 10px; border-top: 1px solid var(--border); }
+  .cat-inline-add input {
+    border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; color: var(--ink);
+  }
+  .cat-inline-add input:focus { border-color: var(--accent); }
+  .cat-inline-add input.flex1 { flex: 1; }
+  .cat-inline-add input.qty { width: 58px; }
+  .btn-add-sm {
+    background: var(--accent); color: white; border: none; border-radius: 6px;
+    padding: 5px 11px; font-family: 'DM Sans', sans-serif; font-size: 12px;
+    font-weight: 600; cursor: pointer; transition: background .2s;
+  }
+  .btn-add-sm:hover { background: var(--accent-light); }
+
+  /* EMPTY / WELCOME */
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--ink-faint); }
+  .empty-state .eicon { font-size: 44px; margin-bottom: 12px; }
+  .no-store {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; height: 100%; text-align: center; color: var(--ink-faint);
+  }
+  .no-store .big { font-size: 60px; margin-bottom: 14px; }
+  .no-store h2 { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--ink); margin-bottom: 8px; }
+  .no-store p { font-size: 13px; max-width: 260px; line-height: 1.7; }
+
+  /* MODALS */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+    backdrop-filter: blur(2px);
+  }
+  .modal { background: white; border-radius: 16px; padding: 26px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal h2 { font-family: 'Playfair Display', serif; font-size: 21px; font-weight: 900; margin-bottom: 18px; }
+  .modal label { display: block; font-size: 11px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .modal input, .modal select {
+    width: 100%; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 9px 11px; font-family: 'DM Sans', sans-serif; font-size: 14px;
+    color: var(--ink); outline: none; margin-bottom: 14px; background: white;
+  }
+  .modal input:focus, .modal select:focus { border-color: var(--accent); }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+  .btn-cancel {
+    background: none; border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 8px 18px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    color: var(--ink-faint); cursor: pointer;
+  }
+  .btn-confirm {
+    background: var(--accent); border: none; border-radius: 8px;
+    padding: 8px 18px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+    font-weight: 600; color: white; cursor: pointer; transition: background .2s;
+  }
+  .btn-confirm:hover { background: var(--accent-light); }
+
+  /* CONFIG MODAL */
+  .config-note { background: var(--cream); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--ink-light); margin-bottom: 14px; line-height: 1.6; }
+  .config-note code { background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+  /* USERNAME BADGE */
+  .user-badge {
+    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px; padding: 5px 12px; color: rgba(255,255,255,0.75); font-size: 13px;
+    cursor: pointer; transition: background .2s;
+  }
+  .user-badge:hover { background: rgba(255,255,255,0.15); }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 22px; right: 22px;
+    background: var(--ink); color: var(--cream);
+    padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+    z-index: 300; animation: slideUp .3s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  }
+  .toast.ok { background: var(--green); }
+  .toast.err { background: #B44; }
+  @keyframes slideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+
+  /* OVERLAY LOADER */
+  #loader {
+    position: fixed; inset: 0; background: var(--cream);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 400; gap: 16px;
+  }
+  #loader .logo-big { font-family: 'Playfair Display', serif; font-size: 32px; font-weight: 900; color: var(--ink); }
+  #loader .logo-big span { color: var(--accent); }
+  #loader p { font-size: 14px; color: var(--ink-faint); }
+  .spinner {
+    width: 36px; height: 36px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="logo-big">Cart<span>•</span>Family</div>
+  <div class="spinner"></div>
+  <p id="loaderMsg">Loading your lists…</p>
+</div>
+
+<header>
+  <div class="logo">Cart<span>•</span>Family</div>
+  <div class="header-right">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncLabel">Connected</span>
+    </div>
+    <button class="hdr-btn" onclick="manualSync()">⟳ Sync</button>
+    <button class="user-badge" id="userBadge" onclick="openNameModal()">👤 <span id="userNameDisplay">Family</span></button>
+    <button class="hdr-btn green" onclick="openConfigModal()">⚙ Settings</button>
+  </div>
+</header>
+
+<div class="app-container">
+  <div class="sidebar">
+    <div class="sidebar-header">Your Stores</div>
+    <div id="storeList"></div>
+    <button class="add-store-btn" onclick="openAddStoreModal()">+ Add Store</button>
+  </div>
+  <div class="main-content" id="mainContent">
+    <div class="no-store">
+      <div class="big">🛒</div>
+      <h2>Welcome, McGlinn Family!</h2>
+      <p>Select a store from the sidebar to manage your shopping list.</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="configModal" style="display:none">
+  <div class="modal">
+    <h2>⚙ Settings</h2>
+    <div class="config-note">
+      Paste your <strong>Google Apps Script Web App URL</strong> below. You get this after deploying your <code>Code.gs</code> as a Web App in Google Apps Script.
+    </div>
+    <label>Apps Script Web App URL</label>
+    <input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/…/exec">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('configModal')">Cancel</button>
+      <button class="btn-confirm" onclick="saveConfig()">Save & Connect</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="nameModal" style="display:none">
+  <div class="modal">
+    <h2>Your Name</h2>
+    <label>Who's adding items?</label>
+    <input id="nameInput" type="text" placeholder="e.g. Mom, Dad, Jake…" maxlength="30">
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('nameModal')">Cancel</button>
+      <button class="btn-confirm" onclick="saveName()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addStoreModal" style="display:none">
+  <div class="modal">
+    <h2>Add a Store</h2>
+    <label>Store Name</label>
+    <input id="newStoreName" type="text" placeholder="e.g. Trader Joe's">
+    <label>Icon</label>
+    <select id="newStoreEmoji">
+      <option value="🛒">🛒 Shopping Cart</option>
+      <option value="🍎">🍎 Grocery</option>
+      <option value="🏠">🏠 Home Improvement</option>
+      <option value="💊">💊 Pharmacy</option>
+      <option value="🎯">🎯 Target / Discount</option>
+      <option value="📦">📦 Warehouse Club</option>
+      <option value="🌻">🌻 Garden / Nursery</option>
+      <option value="🥩">🥩 Butcher / Meat</option>
+      <option value="🍞">🍞 Bakery</option>
+      <option value="🧴">🧴 Beauty / Cosmetics</option>
+      <option value="🏪">🏪 Convenience</option>
+      <option value="🐾">🐾 Pet Store</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('addStoreModal')">Cancel</button>
+      <button class="btn-confirm" onclick="addStore()">Add Store</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addCategoryModal" style="display:none">
+  <div class="modal">
+    <h2>Add a Category</h2>
+    <label>Category Name</label>
+    <input id="newCategoryName" type="text" placeholder="e.g. Snacks & Chips">
+    <label>Icon</label>
+    <select id="newCategoryEmoji">
+      <option value="🥑">🥑 Produce</option>
+      <option value="🥩">🥩 Meat & Seafood</option>
+      <option value="🥛">🥛 Dairy</option>
+      <option value="🍞">🍞 Bakery</option>
+      <option value="🥶">🥶 Frozen</option>
+      <option value="🥫">🥫 Canned / Pantry</option>
+      <option value="🧴">🧴 Household</option>
+      <option value="💊">💊 Health</option>
+      <option value="🍷">🍷 Beverages</option>
+      <option value="🍿">🍿 Snacks</option>
+      <option value="🌺">🌺 Floral</option>
+      <option value="🐾">🐾 Pet</option>
+      <option value="👶">👶 Baby</option>
+      <option value="🔧">🔧 Tools / Hardware</option>
+      <option value="🪴">🪴 Garden</option>
+      <option value="🎨">🎨 Crafts / Arts</option>
+      <option value="📦">📦 Other</option>
+    </select>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal('addCategoryModal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmAddCategory()">Add Category</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+//  CONFIG — paste your Apps Script URL here OR enter it via Settings ⚙
+// =====================================================================
+const HARDCODED_API_URL = ""; // Optional: paste URL here to skip settings step
+
+// =====================================================================
+const DEFAULT_STORES = [
+  { id:"hyvee", name:"HyVee", emoji:"🍎", categories:[
+    {id:"hv-fv",   name:"Fruits & Vegetables",   emoji:"🥑"},
+    {id:"hv-meat", name:"Meats & Seafood",        emoji:"🥩"},
+    {id:"hv-bak",  name:"Bakery",                 emoji:"🍞"},
+    {id:"hv-deli", name:"Deli",                   emoji:"🥙"},
+    {id:"hv-dairy",name:"Dairy, Eggs & Cheese",   emoji:"🥛"},
+    {id:"hv-frz",  name:"Frozen",                 emoji:"🥶"},
+    {id:"hv-bev",  name:"Beverages",              emoji:"🍷"},
+    {id:"hv-hh",   name:"Household",              emoji:"🧴"},
+  ]},
+  { id:"homedepot", name:"Home Depot", emoji:"🏠", categories:[
+    {id:"hd-lum",  name:"Lumber & Building",  emoji:"🪵"},
+    {id:"hd-tool", name:"Tools & Hardware",   emoji:"🔧"},
+    {id:"hd-pnt",  name:"Paint & Supplies",   emoji:"🎨"},
+    {id:"hd-elec", name:"Electrical",         emoji:"⚡"},
+    {id:"hd-plmb", name:"Plumbing",           emoji:"🚿"},
+    {id:"hd-gdn",  name:"Garden & Outdoor",   emoji:"🪴"},
+  ]},
+  { id:"walgreens", name:"Walgreens", emoji:"💊", categories:[
+    {id:"wg-rx",   name:"Prescriptions",          emoji:"💊"},
+    {id:"wg-vit",  name:"Vitamins & Supplements", emoji:"🌿"},
+    {id:"wg-bty",  name:"Beauty & Personal Care", emoji:"🧴"},
+    {id:"wg-snk",  name:"Snacks & Food",          emoji:"🍿"},
+    {id:"wg-pho",  name:"Photo & Cards",          emoji:"📸"},
+  ]},
+  { id:"target", name:"Target", emoji:"🎯", categories:[
+    {id:"tg-groc", name:"Grocery",                emoji:"🛒"},
+    {id:"tg-clth", name:"Clothing & Accessories", emoji:"👗"},
+    {id:"tg-home", name:"Home & Kitchen",         emoji:"🏡"},
+    {id:"tg-elec", name:"Electronics",            emoji:"📱"},
+    {id:"tg-toy",  name:"Toys & Games",           emoji:"🧸"},
+    {id:"tg-bty",  name:"Beauty",                 emoji:"💄"},
+  ]},
+  { id:"costco", name:"Costco", emoji:"📦", categories:[
+    {id:"cc-prod", name:"Fresh Produce",    emoji:"🥑"},
+    {id:"cc-meat", name:"Meat & Seafood",   emoji:"🥩"},
+    {id:"cc-bak",  name:"Bakery & Deli",    emoji:"🍞"},
+    {id:"cc-pant", name:"Pantry & Dry Goods",emoji:"🥫"},
+    {id:"cc-frz",  name:"Frozen Foods",     emoji:"🥶"},
+    {id:"cc-hlth", name:"Health & Beauty",  emoji:"💊"},
+    {id:"cc-home", name:"Home & Garden",    emoji:"🏡"},
+    {id:"cc-gas",  name:"Gas & Auto",       emoji:"⛽"},
+  ]},
+  { id:"westlake", name:"Westlake", emoji:"🌻", categories:[
+    {id:"wl-plt",  name:"Plants & Flowers",         emoji:"🌺"},
+    {id:"wl-seed", name:"Seeds & Bulbs",             emoji:"🌱"},
+    {id:"wl-soil", name:"Soil & Mulch",              emoji:"🪣"},
+    {id:"wl-tool", name:"Garden Tools",              emoji:"🔧"},
+    {id:"wl-dcr",  name:"Outdoor Decor",             emoji:"🏺"},
+    {id:"wl-fert", name:"Fertilizer & Pest Control", emoji:"🌿"},
+  ]},
+];
+
+// =====================================================================
+let state = { stores: [], activeStoreId: null };
+let apiUrl = "";
+let userName = localStorage.getItem("cf-username") || "Family";
+let syncTimer = null;
+let pendingCatStoreId = null;
+
+// ── API ──────────────────────────────────────────────────────────────
+function getApiUrl() {
+  return HARDCODED_API_URL || localStorage.getItem("cf-api-url") || "";
+}
+
+async function apiGet() {
+  const url = getApiUrl();
+  if (!url) throw new Error("No API URL configured");
+  const res = await fetch(url + "?action=read", { cache: "no-store" });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "API error");
+  return data.stores;
+}
+
+async function apiPost(body) {
+  const url = getApiUrl();
+  if (!url) throw new Error("No API URL configured");
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain" }, // avoids CORS preflight
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || "API error");
+  return data;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────
+async function init() {
+  apiUrl = getApiUrl();
+  document.getElementById("userNameDisplay").textContent = userName;
+
+  if (!apiUrl) {
+    hideLoader();
+    openConfigModal();
+    return;
+  }
+
+  setStatus("syncing", "Loading…");
+  try {
+    await loadFromApi();
+    hideLoader();
+    setStatus("ok", "Connected");
+    startAutoSync();
+  } catch(e) {
+    hideLoader();
+    setStatus("error", "Not connected");
+    toast("Could not reach the sheet. Check Settings ⚙", "err");
+  }
+}
+
+async function loadFromApi() {
+  const stores = await apiGet();
+  if (stores.length === 0) {
+    // First-ever load — push default stores to sheet
+    document.getElementById("loaderMsg").textContent = "First run — setting up your sheet…";
+    const defaultFull = DEFAULT_STORES.map(s => ({
+      ...s,
+      categories: s.categories.map(c => ({ ...c, items: [] }))
+    }));
+    await apiPost({ action: "fullSync", stores: defaultFull });
+    state.stores = defaultFull.map(s => ({ ...s, categories: s.categories.map(c => ({ ...c, collapsed: false })) }));
+  } else {
+    state.stores = stores.map(s => ({
+      ...s,
+      categories: s.categories.map(c => ({
+        ...c,
+        collapsed: (state.stores.find(ss=>ss.id===s.id)?.categories.find(cc=>cc.id===c.id)?.collapsed) || false
+      }))
+    }));
+  }
+  renderAll();
+}
+
+function startAutoSync() {
+  clearInterval(syncTimer);
+  syncTimer = setInterval(async () => {
+    try {
+      await loadFromApi();
+      setStatus("ok", "Synced " + fmtTime(new Date()));
+    } catch(e) { setStatus("error", "Sync error"); }
+  }, 20000);
+}
+
+async function manualSync() {
+  setStatus("syncing", "Syncing…");
+  try {
+    await loadFromApi();
+    setStatus("ok", "Synced " + fmtTime(new Date()));
+    toast("✓ Synced!", "ok");
+  } catch(e) {
+    setStatus("error", "Sync failed");
+    toast("Sync failed — check your connection", "err");
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function renderAll() {
+  renderSidebar();
+  if (state.activeStoreId) {
+    const store = state.stores.find(s => s.id === state.activeStoreId);
+    if (store) renderStore(store); else { state.activeStoreId = null; renderWelcome(); }
+  }
+}
+
+function renderSidebar() {
+  document.getElementById("storeList").innerHTML = state.stores.map(s => {
+    const n = s.categories.reduce((a,c) => a + c.items.filter(i=>!i.checked).length, 0);
+    return `<div class="store-tab ${s.id===state.activeStoreId?'active':''}" onclick="selectStore('${s.id}')">
+      <div class="store-icon">${s.emoji}</div>
+      <div class="store-info">
+        <div class="store-name">${s.name}</div>
+        <div class="store-count">${n} item${n!==1?'s':''} needed</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderWelcome() {
+  document.getElementById("mainContent").innerHTML = `
+    <div class="no-store">
+      <div class="big">🛒</div>
+      <h2>Welcome, McGlinn Family!</h2>
+      <p>Select a store from the sidebar to manage your shopping list.</p>
+    </div>`;
+}
+
+function selectStore(id) {
+  state.activeStoreId = id;
+  const store = state.stores.find(s=>s.id===id);
+  renderSidebar();
+  renderStore(store);
+}
+
+function renderStore(store) {
+  const all = store.categories.flatMap(c=>c.items);
+  const checked = all.filter(i=>i.checked).length;
+  const total = all.length;
+  const pct = total ? Math.round(checked/total*100) : 0;
+
+  document.getElementById("mainContent").innerHTML = `
+    <div class="store-header">
+      <div class="store-title-area">
+        <h1>${store.emoji} ${store.name}</h1>
+        <div class="store-subtitle">${store.categories.length} categories · ${all.filter(i=>!i.checked).length} items remaining</div>
+      </div>
+      <div class="store-actions">
+        <button class="btn-secondary" onclick="openAddCategoryModal('${store.id}')">+ Category</button>
+        ${checked>0?`<button class="btn-secondary" onclick="clearChecked('${store.id}')">Clear ${checked} checked</button>`:''}
+        <button class="btn-danger" onclick="deleteStore('${store.id}')">Remove Store</button>
+      </div>
+    </div>
+    ${total>0?`
+    <div class="progress-text"><span>${checked} of ${total} items checked off</span><span>${pct}%</span></div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`:''}
+    <div class="quick-add-bar">
+      <span style="color:var(--ink-faint);font-size:17px">🔍</span>
+      <input type="text" id="qaName" placeholder="Quick add item…" onkeydown="if(event.key==='Enter')quickAdd('${store.id}')">
+      <select id="qaCat">${store.categories.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('')}</select>
+      <input type="text" id="qaQty" class="qty-field" placeholder="Qty">
+      <button class="btn-add" onclick="quickAdd('${store.id}')">Add</button>
+    </div>
+    <div class="categories-grid" id="catGrid">
+      ${store.categories.map(c=>renderCat(store,c)).join('')}
+    </div>
+    ${store.categories.length===0?`<div class="empty-state"><div class="eicon">📋</div><p>No categories yet.<br>Add a category to get started.</p></div>`:''}
+  `;
+}
+
+function renderCat(store, cat) {
+  const active = cat.items.filter(i=>!i.checked);
+  const done   = cat.items.filter(i=>i.checked);
+  return `<div class="category-card">
+    <div class="category-header" onclick="toggleCat('${store.id}','${cat.id}')">
+      <div class="cat-left">
+        <span class="collapse-icon ${cat.collapsed?'':'open'}">▶</span>
+        <span class="cat-emoji">${cat.emoji}</span>
+        <span class="cat-name">${cat.name}</span>
+        ${cat.items.length?`<span class="cat-count">${active.length}</span>`:''}
+      </div>
+      <div class="cat-controls" onclick="event.stopPropagation()">
+        <button class="icon-btn del" onclick="deleteCat('${store.id}','${cat.id}')" title="Delete category">🗑</button>
+      </div>
+    </div>
+    <div class="category-items ${cat.collapsed?'collapsed':''}">
+      ${active.map(item=>renderItem(store.id,cat.id,item)).join('')}
+      ${done.length?`<div class="checked-divider">Checked</div>${done.map(item=>renderItem(store.id,cat.id,item)).join('')}`:''}
+      ${cat.items.length===0?`<div style="padding:10px 14px;font-size:13px;color:var(--ink-faint);font-style:italic">No items yet</div>`:''}
+    </div>
+    <div class="cat-inline-add">
+      <input type="text" class="flex1" placeholder="Add item…" id="il-${cat.id}" onkeydown="if(event.key==='Enter')inlineAdd('${store.id}','${cat.id}')">
+      <input type="text" class="qty" placeholder="Qty" id="iq-${cat.id}">
+      <button class="btn-add-sm" onclick="inlineAdd('${store.id}','${cat.id}')">Add</button>
+    </div>
+  </div>`;
+}
+
+function renderItem(storeId, catId, item) {
+  return `<div class="shopping-item">
+    <div class="item-check ${item.checked?'checked':''}" onclick="toggleItem('${storeId}','${catId}','${item.id}',${!item.checked})"></div>
+    <span class="item-text ${item.checked?'checked':''}">${item.name}</span>
+    ${item.qty?`<span class="item-qty">${item.qty}</span>`:''}
+    ${item.addedBy?`<span class="item-by">${item.addedBy}</span>`:''}
+    <button class="item-del" onclick="deleteItem('${storeId}','${catId}','${item.id}')">✕</button>
+  </div>`;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────
+async function quickAdd(storeId) {
+  const name = document.getElementById("qaName").value.trim();
+  const catId = document.getElementById("qaCat").value;
+  const qty   = document.getElementById("qaQty").value.trim();
+  if (!name) return;
+  const store = state.stores.find(s=>s.id===storeId);
+  const cat   = store.categories.find(c=>c.id===catId);
+  const item  = { id: uid(), name, qty, checked: false, addedBy: userName };
+  cat.items.push(item);
+  document.getElementById("qaName").value = "";
+  document.getElementById("qaQty").value  = "";
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"addItem", storeId, storeName:store.name, storeEmoji:store.emoji, catId, catName:cat.name, catEmoji:cat.emoji, item });
+}
+
+async function inlineAdd(storeId, catId) {
+  const nameEl = document.getElementById(`il-${catId}`);
+  const qtyEl  = document.getElementById(`iq-${catId}`);
+  const name   = nameEl.value.trim();
+  const qty    = qtyEl.value.trim();
+  if (!name) return;
+  const store = state.stores.find(s=>s.id===storeId);
+  const cat   = store.categories.find(c=>c.id===catId);
+  const item  = { id: uid(), name, qty, checked: false, addedBy: userName };
+  cat.items.push(item);
+  nameEl.value = ""; qtyEl.value = "";
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"addItem", storeId, storeName:store.name, storeEmoji:store.emoji, catId, catName:cat.name, catEmoji:cat.emoji, item });
+}
+
+async function toggleItem(storeId, catId, itemId, checked) {
+  const store = state.stores.find(s=>s.id===storeId);
+  const cat   = store.categories.find(c=>c.id===catId);
+  const item  = cat.items.find(i=>i.id===itemId);
+  item.checked = checked;
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"toggleItem", storeId, catId, itemId, checked });
+}
+
+async function deleteItem(storeId, catId, itemId) {
+  const store = state.stores.find(s=>s.id===storeId);
+  const cat   = store.categories.find(c=>c.id===catId);
+  cat.items   = cat.items.filter(i=>i.id!==itemId);
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"deleteItem", storeId, catId, itemId });
+}
+
+async function clearChecked(storeId) {
+  const store = state.stores.find(s=>s.id===storeId);
+  store.categories.forEach(c => { c.items = c.items.filter(i=>!i.checked); });
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"clearChecked", storeId });
+}
+
+function toggleCat(storeId, catId) {
+  const store = state.stores.find(s=>s.id===storeId);
+  const cat   = store.categories.find(c=>c.id===catId);
+  cat.collapsed = !cat.collapsed;
+  renderStore(store);
+}
+
+async function deleteCat(storeId, catId) {
+  if (!confirm("Delete this category and all its items?")) return;
+  const store = state.stores.find(s=>s.id===storeId);
+  store.categories = store.categories.filter(c=>c.id!==catId);
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"deleteCategory", storeId, catId });
+}
+
+async function deleteStore(storeId) {
+  if (!confirm("Remove this store and all its lists?")) return;
+  state.stores = state.stores.filter(s=>s.id!==storeId);
+  state.activeStoreId = null;
+  renderSidebar(); renderWelcome();
+  await apiPost({ action:"deleteStore", storeId });
+}
+
+// ── ADD STORE ─────────────────────────────────────────────────────────
+function openAddStoreModal() { document.getElementById("addStoreModal").style.display="flex"; setTimeout(()=>document.getElementById("newStoreName").focus(),80); }
+async function addStore() {
+  const name  = document.getElementById("newStoreName").value.trim();
+  const emoji = document.getElementById("newStoreEmoji").value;
+  if (!name) return;
+  const id    = name.toLowerCase().replace(/\s+/g,"-") + "-" + uid(4);
+  const store = { id, name, emoji, categories: [] };
+  state.stores.push(store);
+  closeModal("addStoreModal");
+  document.getElementById("newStoreName").value = "";
+  selectStore(id); renderSidebar();
+  await apiPost({ action:"addStore", store });
+}
+
+// ── ADD CATEGORY ──────────────────────────────────────────────────────
+function openAddCategoryModal(storeId) {
+  pendingCatStoreId = storeId;
+  document.getElementById("addCategoryModal").style.display="flex";
+  setTimeout(()=>document.getElementById("newCategoryName").focus(),80);
+}
+async function confirmAddCategory() {
+  const name  = document.getElementById("newCategoryName").value.trim();
+  const emoji = document.getElementById("newCategoryEmoji").value;
+  if (!name || !pendingCatStoreId) return;
+  const store    = state.stores.find(s=>s.id===pendingCatStoreId);
+  const category = { id: name.toLowerCase().replace(/\s+/g,"-")+"-"+uid(4), name, emoji, collapsed:false, items:[] };
+  store.categories.push(category);
+  document.getElementById("newCategoryName").value = "";
+  closeModal("addCategoryModal");
+  renderStore(store); renderSidebar();
+  await apiPost({ action:"addCategory", storeId:store.id, storeName:store.name, storeEmoji:store.emoji, category });
+}
+
+// ── CONFIG / NAME ─────────────────────────────────────────────────────
+function openConfigModal() {
+  document.getElementById("apiUrlInput").value = getApiUrl();
+  document.getElementById("configModal").style.display="flex";
+}
+async function saveConfig() {
+  const url = document.getElementById("apiUrlInput").value.trim();
+  if (!url) return;
+  localStorage.setItem("cf-api-url", url);
+  closeModal("configModal");
+  setStatus("syncing","Connecting…");
+  try {
+    await loadFromApi();
+    setStatus("ok","Connected");
+    startAutoSync();
+    toast("✓ Connected to your Google Sheet!", "ok");
+  } catch(e) {
+    setStatus("error","Connection failed");
+    toast("Could not connect — double-check the URL", "err");
+  }
+}
+function openNameModal() {
+  document.getElementById("nameInput").value = userName;
+  document.getElementById("nameModal").style.display="flex";
+  setTimeout(()=>document.getElementById("nameInput").focus(),80);
+}
+function saveName() {
+  const n = document.getElementById("nameInput").value.trim();
+  if (!n) return;
+  userName = n;
+  localStorage.setItem("cf-username", n);
+  document.getElementById("userNameDisplay").textContent = n;
+  closeModal("nameModal");
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────
+function uid(len=8){ return Math.random().toString(36).substring(2,2+len); }
+function closeModal(id){ document.getElementById(id).style.display="none"; }
+function hideLoader(){ document.getElementById("loader").style.display="none"; }
+function fmtTime(d){ return d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }
+
+function setStatus(type, label) {
+  const dot = document.getElementById("syncDot");
+  dot.className = "sync-dot" + (type==="syncing"?" syncing":type==="error"?" error":"");
+  document.getElementById("syncLabel").textContent = label;
+}
+
+let toastTimer;
+function toast(msg, type="") {
+  document.querySelector(".toast")?.remove();
+  const t = document.createElement("div");
+  t.className = "toast " + type;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.remove(), 3200);
+}
+
+// Close modals on backdrop click
+document.querySelectorAll(".modal-overlay").forEach(o => o.addEventListener("click", e=>{ if(e.target===o) o.style.display="none"; }));
+
+// Enter-key shortcuts
+["newStoreName","newCategoryName","nameInput"].forEach(id=>{
+  document.getElementById(id)?.addEventListener("keydown",e=>{ if(e.key==="Enter") { if(id==="newStoreName")addStore(); if(id==="newCategoryName")confirmAddCategory(); if(id==="nameInput")saveName(); }});
+});
+
+init();
+</script>
+</body>
+</html>
