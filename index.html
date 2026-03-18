@@ -187,7 +187,6 @@
   .item-text { flex: 1; font-size: 14px; }
   .item-text.checked { text-decoration: line-through; color: var(--ink-faint); }
   .item-qty { font-size: 12px; color: var(--ink-faint); background: var(--cream); padding: 2px 7px; border-radius: 6px; font-weight: 500; }
-  .item-by { font-size: 11px; color: var(--ink-faint); font-style: italic; }
   .item-del { opacity: 0; background: none; border: none; cursor: pointer; color: #CCC; font-size: 13px; padding: 2px 4px; border-radius: 4px; transition: all .15s; }
   .shopping-item:hover .item-del { opacity: 1; }
   .item-del:hover { color: #C55; }
@@ -252,13 +251,7 @@
   .config-note { background: var(--cream); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--ink-light); margin-bottom: 14px; line-height: 1.6; }
   .config-note code { background: var(--border); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
 
-  /* USERNAME BADGE */
-  .user-badge {
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
-    border-radius: 8px; padding: 5px 12px; color: rgba(255,255,255,0.75); font-size: 13px;
-    cursor: pointer; transition: background .2s;
-  }
-  .user-badge:hover { background: rgba(255,255,255,0.15); }
+
 
   /* TOAST */
   .toast {
@@ -304,8 +297,6 @@
       <span id="syncLabel">Connected</span>
     </div>
     <button class="hdr-btn" onclick="manualSync()">⟳ Sync</button>
-    <button class="user-badge" id="userBadge" onclick="openNameModal()">👤 <span id="userNameDisplay">Family</span></button>
-    <button class="hdr-btn green" onclick="openConfigModal()">⚙ Settings</button>
   </div>
 </header>
 
@@ -325,32 +316,6 @@
 </div>
 
 <!-- MODALS -->
-<div class="modal-overlay" id="configModal" style="display:none">
-  <div class="modal">
-    <h2>⚙ Settings</h2>
-    <div class="config-note">
-      Paste your <strong>Google Apps Script Web App URL</strong> below. You get this after deploying your <code>Code.gs</code> as a Web App in Google Apps Script.
-    </div>
-    <label>Apps Script Web App URL</label>
-    <input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/…/exec">
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal('configModal')">Cancel</button>
-      <button class="btn-confirm" onclick="saveConfig()">Save & Connect</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="nameModal" style="display:none">
-  <div class="modal">
-    <h2>Your Name</h2>
-    <label>Who's adding items?</label>
-    <input id="nameInput" type="text" placeholder="e.g. Mom, Dad, Jake…" maxlength="30">
-    <div class="modal-btns">
-      <button class="btn-cancel" onclick="closeModal('nameModal')">Cancel</button>
-      <button class="btn-confirm" onclick="saveName()">Save</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal-overlay" id="addStoreModal" style="display:none">
   <div class="modal">
@@ -475,7 +440,6 @@ const DEFAULT_STORES = [
 // =====================================================================
 let state = { stores: [], activeStoreId: null };
 let apiUrl = "";
-let userName = localStorage.getItem("cf-username") || "Family";
 let syncTimer = null;
 let pendingCatStoreId = null;
 
@@ -536,11 +500,10 @@ async function apiPost(body) {
 // ── INIT ─────────────────────────────────────────────────────────────
 async function init() {
   apiUrl = getApiUrl();
-  document.getElementById("userNameDisplay").textContent = userName;
 
   if (!apiUrl) {
     hideLoader();
-    openConfigModal();
+    toast("❌ No API URL configured — update HARDCODED_API_URL in index.html", "err");
     return;
   }
 
@@ -554,7 +517,7 @@ async function init() {
     console.error("Init error:", e);
     hideLoader();
     setStatus("error", "Not connected");
-    toast("❌ " + (e.message || "Connection failed") + " — check ⚙ Settings", "err");
+    toast("❌ " + (e.message || "Connection failed"), "err");
   }
 }
 
@@ -709,7 +672,6 @@ function renderItem(storeId, catId, item) {
     <div class="item-check ${item.checked?'checked':''}" onclick="toggleItem('${storeId}','${catId}','${item.id}',${!item.checked})"></div>
     <span class="item-text ${item.checked?'checked':''}">${item.name}</span>
     ${item.qty?`<span class="item-qty">${item.qty}</span>`:''}
-    ${item.addedBy?`<span class="item-by">${item.addedBy}</span>`:''}
     <button class="item-del" onclick="deleteItem('${storeId}','${catId}','${item.id}')">✕</button>
   </div>`;
 }
@@ -722,7 +684,7 @@ async function quickAdd(storeId) {
   if (!name) return;
   const store = state.stores.find(s=>s.id===storeId);
   const cat   = store.categories.find(c=>c.id===catId);
-  const item  = { id: uid(), name, qty, checked: false, addedBy: userName };
+  const item  = { id: uid(), name, qty, checked: false };
   cat.items.push(item);
   document.getElementById("qaName").value = "";
   document.getElementById("qaQty").value  = "";
@@ -738,7 +700,7 @@ async function inlineAdd(storeId, catId) {
   if (!name) return;
   const store = state.stores.find(s=>s.id===storeId);
   const cat   = store.categories.find(c=>c.id===catId);
-  const item  = { id: uid(), name, qty, checked: false, addedBy: userName };
+  const item  = { id: uid(), name, qty, checked: false };
   cat.items.push(item);
   nameEl.value = ""; qtyEl.value = "";
   renderStore(store); renderSidebar();
@@ -826,42 +788,6 @@ async function confirmAddCategory() {
   await apiPost({ action:"addCategory", storeId:store.id, storeName:store.name, storeEmoji:store.emoji, category });
 }
 
-// ── CONFIG / NAME ─────────────────────────────────────────────────────
-function openConfigModal() {
-  document.getElementById("apiUrlInput").value = getApiUrl();
-  document.getElementById("configModal").style.display="flex";
-}
-async function saveConfig() {
-  const url = document.getElementById("apiUrlInput").value.trim();
-  if (!url) return;
-  localStorage.setItem("cf-api-url", url);
-  closeModal("configModal");
-  setStatus("syncing","Connecting…");
-  try {
-    await loadFromApi();
-    setStatus("ok","Connected");
-    startAutoSync();
-    toast("✓ Connected to your Google Sheet!", "ok");
-  } catch(e) {
-    console.error("saveConfig error:", e);
-    setStatus("error","Connection failed");
-    toast("❌ " + (e.message || "Could not connect") + " — see browser console for details", "err");
-  }
-}
-function openNameModal() {
-  document.getElementById("nameInput").value = userName;
-  document.getElementById("nameModal").style.display="flex";
-  setTimeout(()=>document.getElementById("nameInput").focus(),80);
-}
-function saveName() {
-  const n = document.getElementById("nameInput").value.trim();
-  if (!n) return;
-  userName = n;
-  localStorage.setItem("cf-username", n);
-  document.getElementById("userNameDisplay").textContent = n;
-  closeModal("nameModal");
-}
-
 // ── HELPERS ───────────────────────────────────────────────────────────
 function uid(len=8){ return Math.random().toString(36).substring(2,2+len); }
 function closeModal(id){ document.getElementById(id).style.display="none"; }
@@ -889,8 +815,8 @@ function toast(msg, type="") {
 document.querySelectorAll(".modal-overlay").forEach(o => o.addEventListener("click", e=>{ if(e.target===o) o.style.display="none"; }));
 
 // Enter-key shortcuts
-["newStoreName","newCategoryName","nameInput"].forEach(id=>{
-  document.getElementById(id)?.addEventListener("keydown",e=>{ if(e.key==="Enter") { if(id==="newStoreName")addStore(); if(id==="newCategoryName")confirmAddCategory(); if(id==="nameInput")saveName(); }});
+["newStoreName","newCategoryName"].forEach(id=>{
+  document.getElementById(id)?.addEventListener("keydown",e=>{ if(e.key==="Enter") { if(id==="newStoreName")addStore(); if(id==="newCategoryName")confirmAddCategory(); }});
 });
 
 init();
