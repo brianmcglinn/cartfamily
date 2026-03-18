@@ -487,8 +487,23 @@ function getApiUrl() {
 async function apiGet() {
   const url = getApiUrl();
   if (!url) throw new Error("No API URL configured");
-  const res = await fetch(url + "?action=read", { cache: "no-store" });
-  const data = await res.json();
+  // Apps Script GET: must follow redirects, no cache busting in URL
+  // Use no-cors is NOT an option (we need the response body), so we
+  // rely on Apps Script's own CORS headers from addHeader() in Code.gs
+  let res;
+  try {
+    res = await fetch(url + "?action=read", {
+      method: "GET",
+      redirect: "follow",
+    });
+  } catch(e) {
+    console.error("apiGet network error:", e);
+    throw new Error("Network error — check your internet connection. Detail: " + e.message);
+  }
+  if (!res.ok) throw new Error("HTTP " + res.status + " from Apps Script");
+  let data;
+  try { data = await res.json(); }
+  catch(e) { throw new Error("Apps Script returned non-JSON. Is the deployment set to 'Anyone'?"); }
   if (!data.ok) throw new Error(data.error || "API error");
   return data.stores;
 }
@@ -496,13 +511,25 @@ async function apiGet() {
 async function apiPost(body) {
   const url = getApiUrl();
   if (!url) throw new Error("No API URL configured");
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain" }, // avoids CORS preflight
-    body: JSON.stringify(body)
-  });
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "API error");
+  // Apps Script POST: send as text/plain to avoid preflight, follow redirects
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      redirect: "follow",
+      body: JSON.stringify(body),
+      // No Content-Type header at all — lets browser send as text/plain
+      // which avoids OPTIONS preflight that Apps Script can't handle
+    });
+  } catch(e) {
+    console.error("apiPost network error:", e);
+    throw new Error("Network error on POST: " + e.message);
+  }
+  if (!res.ok) throw new Error("HTTP " + res.status + " from Apps Script (POST)");
+  let data;
+  try { data = await res.json(); }
+  catch(e) { throw new Error("Apps Script POST returned non-JSON"); }
+  if (!data.ok) throw new Error(data.error || "API POST error");
   return data;
 }
 
@@ -524,9 +551,10 @@ async function init() {
     setStatus("ok", "Connected");
     startAutoSync();
   } catch(e) {
+    console.error("Init error:", e);
     hideLoader();
     setStatus("error", "Not connected");
-    toast("Could not reach the sheet. Check Settings ⚙", "err");
+    toast("❌ " + (e.message || "Connection failed") + " — check ⚙ Settings", "err");
   }
 }
 
@@ -815,8 +843,9 @@ async function saveConfig() {
     startAutoSync();
     toast("✓ Connected to your Google Sheet!", "ok");
   } catch(e) {
+    console.error("saveConfig error:", e);
     setStatus("error","Connection failed");
-    toast("Could not connect — double-check the URL", "err");
+    toast("❌ " + (e.message || "Could not connect") + " — see browser console for details", "err");
   }
 }
 function openNameModal() {
